@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import dataclasses
 import gc
@@ -7,13 +9,14 @@ import types
 
 import pytest
 
-from livekit.agents import DEFAULT_API_CONNECT_OPTIONS, utils
-from livekit.agents.cli import log
+# from livekit.agents import DEFAULT_API_CONNECT_OPTIONS, utils
+from livekit import rtc
+# from livekit.agents.cli import log
 
 from .toxic_proxy import Toxiproxy
 
-TEST_CONNECT_OPTIONS = dataclasses.replace(DEFAULT_API_CONNECT_OPTIONS, retry_interval=0.0)
-
+# TEST_CONNECT_OPTIONS = dataclasses.replace(DEFAULT_API_CONNECT_OPTIONS, retry_interval=0.0)
+log = logging.getLogger(__name__)
 
 @pytest.fixture
 def job_process(event_loop):
@@ -24,7 +27,8 @@ def job_process(event_loop):
 
 @pytest.fixture(autouse=True)
 def configure_test():
-    log._silence_noisy_loggers()
+    # log._silence_noisy_loggers()
+    pass
 
 
 @pytest.fixture
@@ -152,3 +156,77 @@ async def fail_on_leaked_tasks():
     if error_messages:
         final_msg = "Test leaked resources:\n\n" + "\n\n".join(error_messages)
         pytest.fail(final_msg)
+
+
+"""
+pytest fixtures for interrupt-filter unit tests.
+All fixtures are session-scoped and async-safe.
+"""
+
+import asyncio
+from collections import deque
+from typing import AsyncGenerator, List
+
+import pytest
+from livekit import rtc
+
+
+class MockRoom:
+    """Minimal in-memory Room object."""
+
+    def __init__(self) -> None:
+        self.name = "test-room"
+        self.sid = "test-sid"
+        self._callbacks: dict[str, list] = {
+            "track_published": [],
+            "track_unpublished": [],
+            "vad_start": [],
+        }
+
+    # ---- simple callback registry ----
+    def on(self, event: str, callback) -> None:
+        self._callbacks[event].append(callback)
+
+    async def emit(self, event: str, *args) -> None:
+        for cb in self._callbacks[event]:
+            if asyncio.iscoroutinefunction(cb):
+                await cb(*args)
+            else:
+                cb(*args)
+
+
+class MockSttStream:
+    """Yields canned partial transcripts with controllable timing."""
+
+    def __init__(self, canned: List[str], delay_ms: int = 40) -> None:
+        self.canned = canned
+        self.delay_s = delay_ms / 1000.0
+
+    async def stream(self) -> AsyncGenerator[str, None]:
+        for partial in self.canned:
+            await asyncio.sleep(self.delay_s)
+            yield partial
+
+
+# ------------------------------------------------------------------ #
+# pytest fixtures
+# ------------------------------------------------------------------ #
+@pytest.fixture(scope="session")
+def mock_room() -> MockRoom:
+    return MockRoom()
+
+
+@pytest.fixture
+def mock_stt_stream():
+    """Factory fixture so each test can inject its own canned utterances."""
+    def _factory(words: List[str], delay_ms: int = 40) -> MockSttStream:
+        return MockSttStream(words, delay_ms)
+    return _factory
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Re-use the same event loop for all async tests."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()

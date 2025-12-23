@@ -10,6 +10,39 @@ exclude = [
     "livekit-plugins/livekit-blingfire",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]          # build ONLY the agent package
+exclude = [
+    "livekit-plugins*",
+    "examples",
+    "tests",
+    "livekit-agents*",         # left-over folder you deleted
+    "*.egg-info",
+    "build",
+    "dist",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["agent", "README.md", "pyproject.toml"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "livekit-agents-interrupt"
+version = "0.1.0"
+description = "LiveKit agent with intelligent interruption handler"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "livekit>=0.10.0",
+    "livekit-api>=0.10.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "prometheus-client>=0.20.0",
+]
+
 [dependency-groups]
 dev = [
     "python-dotenv>=1.0.1",
@@ -28,6 +61,7 @@ dev = [
     "pylint>=2.17.0",
     "pre-commit>=3.3.0",
     "pydantic-settings>=2.11.0",
+    "prometheus-client>=0.20.0",
 ]
 docs = ["pdoc3", "setuptools"]
 
