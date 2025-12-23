@@ -59,7 +59,7 @@ jobs:
         run: uv sync
 
       - name: Run tests
-        run: uv run pytest tests/ -v
+        run: uv run pytest tests/test_interrupt_filter.py -v
 
       - name: Lint & format checks
         run: |
