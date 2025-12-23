@@ -1,3 +1,30 @@
+# name: CI
+
+# on:
+#   push:
+#     branches: [main, feature/*]
+#   pull_request:
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: astral-sh/setup-uv@v2
+#             - name: Purge deleted plugin folders
+#         run: |
+#           find . -maxdepth 1 -type d -name 'livekit-plugins-*' -exec rm -rf {} \; 2>/dev/null || true
+#           find . -maxdepth 1 -type d -name 'livekit-blingfire' -exec rm -rf {} \; 2>/dev/null || true
+
+#       - name: Regenerate lock without deleted members
+#         run: |
+#           rm uv.lock
+#           uv lock
+#       - run: uv sync --frozen
+#       - run: uv run pytest tests/ -v
+#       - run: uv run pre-commit run --all-files
+
+
 name: CI
 
 on:
@@ -11,15 +38,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v2
-            - name: Purge deleted plugin folders
+
+      # ----------------------------------------------------------
+      #  NEW: purge deleted members and regenerate lock on-the-fly
+      # ----------------------------------------------------------
+      - name: Strip deleted members from lock
         run: |
           find . -maxdepth 1 -type d -name 'livekit-plugins-*' -exec rm -rf {} \; 2>/dev/null || true
           find . -maxdepth 1 -type d -name 'livekit-blingfire' -exec rm -rf {} \; 2>/dev/null || true
-
-      - name: Regenerate lock without deleted members
-        run: |
-          rm uv.lock
+          rm -f uv.lock
           uv lock
-      - run: uv sync --frozen
-      - run: uv run pytest tests/ -v
-      - run: uv run pre-commit run --all-files
+
+      # ----------------------------------------------------------
+      #  existing steps (unchanged)
+      # ----------------------------------------------------------
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+      - name: Lint & format checks
+        run: |
+          uv run pre-commit run --all-files
