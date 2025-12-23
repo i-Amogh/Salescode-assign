@@ -39,6 +39,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v2
 
+      - name: Purge uv cache on runner
+        run: uv cache clean --verbose
+
       # ----------------------------------------------------------
       #  NEW: purge deleted members and regenerate lock on-the-fly
       # ----------------------------------------------------------
