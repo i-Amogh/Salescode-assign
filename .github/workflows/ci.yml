@@ -11,6 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v2
+            - name: Purge deleted plugin folders
+        run: |
+          find . -maxdepth 1 -type d -name 'livekit-plugins-*' -exec rm -rf {} \; 2>/dev/null || true
+          find . -maxdepth 1 -type d -name 'livekit-blingfire' -exec rm -rf {} \; 2>/dev/null || true
+
+      - name: Regenerate lock without deleted members
+        run: |
+          rm uv.lock
+          uv lock
       - run: uv sync --frozen
       - run: uv run pytest tests/ -v
       - run: uv run pre-commit run --all-files
